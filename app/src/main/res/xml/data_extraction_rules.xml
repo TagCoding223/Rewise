@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!--
+            TODO: Add cloud backup rules here.
+            By default, all file types are backed up.
+            Use <include> and <exclude> tags to customize.
+            <include domain="file" path="."/>
+            <exclude domain="file" path="my_cache_file.txt"/>
+            -->
+    </cloud-backup>
+    <device-transfer>
+        <!--
+            TODO: Add device-to-device transfer rules here.
+            By default, all file types are transferred.
+            Use <include> and <exclude> tags to customize.
+            <include domain="file" path="."/>
+            <exclude domain="file" path="device_specific.dat"/>
+            -->
+    </device-transfer>
+</data-extraction-rules>

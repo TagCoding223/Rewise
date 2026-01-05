@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Don\'tForget</string>
+    <string name="add_topic">Add Topic</string>
+    <string name="topic_name">Topic Name</string>
+    <string name="save">Save</string>
+    <string name="today_revisions">Today\'s Revisions</string>
+    <string name="upcoming_revisions">Upcoming Revisions</string>
+    <string name="notification_title">Revision Time</string>
+    <string name="notification_message">You have topics to revise today!</string>
+</resources>

@@ -1,0 +1,9 @@
+# grade directroy
+.gradle
+
+# ide diectory
+.idea
+
+# build directory
+build
+
