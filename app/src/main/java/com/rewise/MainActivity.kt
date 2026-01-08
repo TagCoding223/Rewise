@@ -15,12 +15,15 @@ import com.rewise.data.Topic
 import com.rewise.databinding.ActivityMainBinding
 import com.rewise.domain.Scheduler
 import com.rewise.ui.TopicAdapter
+import com.rewise.ui.TopicListItem
 import com.rewise.worker.ReminderWorker
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
+import com.rewise.RewiseApp
 
 class MainActivity : AppCompatActivity() {
 
@@ -71,9 +74,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun addNewTopic(name: String) {
         lifecycleScope.launch(Dispatchers.IO) {
-            // First revision is usually tomorrow (Day 1)
             val calendar = Calendar.getInstance()
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            calendar.add(Calendar.DAY_OF_YEAR, 1) // First revision is tomorrow
 
             val newTopic = Topic(
                 name = name,
@@ -86,16 +88,59 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeTopics() {
         lifecycleScope.launch {
-            // Observe all active topics
-            // In a real app we might want to filter by "Today" or split the list.
-            // For now, show all sorted by date.
             (application as RewiseApp).database.topicDao().getAllActiveTopics()
-                .collect { topics ->
-                    adapter.submitList(topics)
+                .collect { topics: List<Topic> ->
+                    val groupedTopics = groupTopics(topics)
+                    adapter.submitList(groupedTopics)
 
                     binding.tvEmptyState.visibility = if (topics.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
                 }
         }
+    }
+
+    private fun groupTopics(topics: List<Topic>): List<TopicListItem> {
+        val today = mutableListOf<Topic>()
+        val tomorrow = mutableListOf<Topic>()
+        val upcoming = mutableListOf<Topic>()
+
+        val now = Calendar.getInstance()
+
+        for (topic in topics) {
+            val revisionDate = Calendar.getInstance().apply { timeInMillis = topic.nextRevisionDate }
+
+            when {
+                revisionDate.before(now) -> today.add(topic) // Overdue or today
+                isSameDay(now, revisionDate) -> today.add(topic)
+                isTomorrow(now, revisionDate) -> tomorrow.add(topic)
+                else -> upcoming.add(topic)
+            }
+        }
+
+        val list = mutableListOf<TopicListItem>()
+        if (today.isNotEmpty()) {
+            list.add(TopicListItem.HeaderItem("Today"))
+            today.forEach { list.add(TopicListItem.TopicItem(it)) }
+        }
+        if (tomorrow.isNotEmpty()) {
+            list.add(TopicListItem.HeaderItem("Tomorrow"))
+            tomorrow.forEach { list.add(TopicListItem.TopicItem(it)) }
+        }
+        if (upcoming.isNotEmpty()) {
+            list.add(TopicListItem.HeaderItem("Upcoming"))
+            upcoming.forEach { list.add(TopicListItem.TopicItem(it)) }
+        }
+        return list
+    }
+
+    private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    private fun isTomorrow(today: Calendar, tomorrow: Calendar): Boolean {
+        val clone = today.clone() as Calendar
+        clone.add(Calendar.DAY_OF_YEAR, 1)
+        return isSameDay(clone, tomorrow)
     }
 
     private fun onRevisionCompleted(topic: Topic) {
@@ -110,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             (application as RewiseApp).database.topicDao().update(updatedTopic)
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@MainActivity, "Revision Scheduled for next date!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Revision Scheduled!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -121,7 +166,7 @@ class MainActivity : AppCompatActivity() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "DailyReminder",
-            ExistingPeriodicWorkPolicy.KEEP, // Keep existing if already scheduled
+            ExistingPeriodicWorkPolicy.KEEP,
             reminderRequest
         )
     }

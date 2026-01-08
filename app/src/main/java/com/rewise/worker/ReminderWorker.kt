@@ -13,7 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.rewise.AppDatabase
+import com.rewise.data.AppDatabase
 import com.rewise.MainActivity
 import com.rewise.R
 
@@ -25,15 +25,15 @@ class ReminderWorker(
     override suspend fun doWork(): Result {
         val database = AppDatabase.getDatabase(applicationContext)
         val now = System.currentTimeMillis()
-        
+
         // Check for due revisions
         // Note: Using a synchronous call or getting flow first item
         val dueTopics = database.topicDao().getTopicsDueBeforeSync(now)
-        
+
         if (dueTopics.isNotEmpty()) {
             showNotification(dueTopics.size)
         }
-        
+
         return Result.success()
     }
 
