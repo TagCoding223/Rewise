@@ -22,7 +22,8 @@ sealed class TopicListItem {
 }
 
 class TopicAdapter(
-    private val onRevisionClick: (Topic) -> Unit
+    private val onRevisionClick: (Topic) -> Unit,
+    private val onTopicClick: (Topic) -> Unit
 ) : ListAdapter<TopicListItem, RecyclerView.ViewHolder>(TopicDiffCallback()) {
 
     companion object {
@@ -85,6 +86,10 @@ class TopicAdapter(
                 if (binding.btnDone.isEnabled) {
                     onRevisionClick(topic)
                 }
+            }
+            
+            binding.root.setOnClickListener {
+                onTopicClick(topic)
             }
         }
 

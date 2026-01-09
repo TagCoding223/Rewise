@@ -3,6 +3,7 @@ package com.rewise
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -18,12 +19,13 @@ import com.rewise.ui.TopicAdapter
 import com.rewise.ui.TopicListItem
 import com.rewise.worker.ReminderWorker
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
-import com.rewise.RewiseApp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,9 +44,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = TopicAdapter { topic ->
-            onRevisionCompleted(topic)
-        }
+        adapter = TopicAdapter(
+            onRevisionClick = { topic ->
+                onRevisionCompleted(topic)
+            },
+            onTopicClick = { topic ->
+                showTopicDetailsDialog(topic)
+            }
+        )
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
     }
@@ -58,32 +65,59 @@ class MainActivity : AppCompatActivity() {
     private fun showAddTopicDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_topic, null)
         val etTopicName = dialogView.findViewById<EditText>(R.id.etTopicName)
+        val etDescription = dialogView.findViewById<EditText>(R.id.etDescription)
+        val etResourceLink = dialogView.findViewById<EditText>(R.id.etResourceLink)
 
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.add_topic))
             .setView(dialogView)
             .setPositiveButton(getString(R.string.save)) { _, _ ->
                 val name = etTopicName.text.toString()
+                val description = etDescription.text.toString()
+                val resourceLink = etResourceLink.text.toString()
                 if (name.isNotEmpty()) {
-                    addNewTopic(name)
+                    addNewTopic(name, description, resourceLink)
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun addNewTopic(name: String) {
+    private fun addNewTopic(name: String, description: String, resourceLink: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             val calendar = Calendar.getInstance()
             calendar.add(Calendar.DAY_OF_YEAR, 1) // First revision is tomorrow
 
             val newTopic = Topic(
                 name = name,
+                description = description,
+                resourceLink = resourceLink,
                 stage = 0,
                 nextRevisionDate = calendar.timeInMillis
             )
             (application as RewiseApp).database.topicDao().insert(newTopic)
         }
+    }
+
+    private fun showTopicDetailsDialog(topic: Topic) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_topic_details, null)
+        
+        dialogView.findViewById<TextView>(R.id.tvDetailTitle).text = topic.name
+        dialogView.findViewById<TextView>(R.id.tvDetailDescription).text = 
+            if (topic.description.isNotEmpty()) topic.description else "No description provided."
+        
+        dialogView.findViewById<TextView>(R.id.tvDetailLink).text = 
+            if (topic.resourceLink.isNotEmpty()) topic.resourceLink else "No resource link provided."
+            
+        val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+        val dateStr = dateFormat.format(Date(topic.nextRevisionDate))
+        dialogView.findViewById<TextView>(R.id.tvDetailNextRevision).text = "Next Revision: $dateStr"
+        dialogView.findViewById<TextView>(R.id.tvDetailStage).text = "Current Stage: ${topic.stage}"
+
+        AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton("Close", null)
+            .show()
     }
 
     private fun observeTopics() {
