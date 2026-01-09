@@ -7,6 +7,8 @@ import androidx.room.PrimaryKey
 data class Topic(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
+    val description: String = "",
+    val resourceLink: String = "",
     val stage: Int = 0, // 0-indexed stage in the sequence
     val nextRevisionDate: Long, // Timestamp
     val isCompleted: Boolean = false
